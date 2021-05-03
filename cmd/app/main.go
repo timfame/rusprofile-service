@@ -2,11 +2,17 @@ package main
 
 import (
 	"context"
+	"github.com/pkg/errors"
 	"github.com/timfame/rusprofile-service/internal/cache"
 	"github.com/timfame/rusprofile-service/internal/config"
+	"github.com/timfame/rusprofile-service/internal/delivery/grpc"
 	"github.com/timfame/rusprofile-service/internal/rusprofile"
 	"github.com/timfame/rusprofile-service/pkg/logger"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -29,8 +35,38 @@ func main() {
 
 	s := rusprofile.NewLogger(rusprofile.NewBase(cfg.Rusprofile, c), l)
 
-	_, err = s.GetCompanyByINN(context.Background(), "7843007274")
-	if err != nil {
-		l.Fatal("error", zap.Error(err))
+	grpcServ := grpc.NewServer(cfg.Grpc, s, l)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(interrupt)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return errors.WithMessage(grpcServ.Run(), "Grpc server")
+	})
+	g.Go(func() error {
+		return errors.WithMessage(grpcServ.RunGateway(ctx), "Grpc gateway server")
+	})
+
+	select {
+	case sig := <-interrupt:
+		l.Info("Exiting program", zap.String("reason", sig.String()))
+	case <-ctx.Done():
+		break
+	}
+	l.Info("Shutdown signal received")
+	cancel()
+
+	if err := grpcServ.GracefulStop(); err != nil {
+		l.Info("Grpc gateway server graceful stop failed", zap.Error(err))
+	}
+
+	if err := g.Wait(); err != nil {
+		l.Info("Serving one of the servers failed", zap.Error(err))
 	}
 }

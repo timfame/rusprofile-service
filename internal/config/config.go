@@ -10,6 +10,7 @@ type Config struct {
 	Rusprofile *Rusprofile `json:"rusprofile"`
 	Redis      *Redis      `json:"redis"`
 	Cache      *Cache      `json:"cache"`
+	Grpc       *Grpc       `json:"grpc"`
 }
 
 func New() Config {
@@ -17,6 +18,7 @@ func New() Config {
 		Rusprofile: &Rusprofile{},
 		Redis:      &Redis{},
 		Cache:      &Cache{},
+		Grpc:       &Grpc{},
 	}
 }
 
@@ -41,6 +43,9 @@ func (c *Config) Init(withRequiredRedis bool) error {
 		return err
 	}
 	if err := c.Cache.Init(); err != nil {
+		return err
+	}
+	if err := c.Grpc.Init(); err != nil {
 		return err
 	}
 	return nil
