@@ -12,11 +12,11 @@ const (
 	rusprofileSearchCompanyItemDivClassEnv      = "RUSPROFILE_SEARCH_COMPANY_ITEM_DIV_CLASS"
 	rusprofileSearchCompanyItemTitleDivClassEnv = "RUSPROFILE_SEARCH_COMPANY_ITEM_TITLE_DIV_CLASS"
 
-	rusprofileCompanyNameDivClassEnv                  = "RUSPROFILE_COMPANY_NAME_DIV_CLASS"
-	rusprofileCompanyKPPSpanIDEnv                     = "RUSPROFILE_COMPANY_KPP_SPAN_ID"
-	rusprofileCompanyInfoTitleClassEnv                = "RUSPROFILE_COMPANY_INFO_TITLE_CLASS"
-	rusprofileCompanyInfoTitleDirectorTextEnv         = "RUSPROFILE_COMPANY_INFO_TITLE_DIRECTOR_TEXT"
-	rusprofileCompanyInfoTextClassEnv                 = "RUSPROFILE_COMPANY_INFO_TEXT_CLASS"
+	rusprofileCompanyNameDivClassEnv          = "RUSPROFILE_COMPANY_NAME_DIV_CLASS"
+	rusprofileCompanyKPPSpanIDEnv             = "RUSPROFILE_COMPANY_KPP_SPAN_ID"
+	rusprofileCompanyInfoTitleClassEnv        = "RUSPROFILE_COMPANY_INFO_TITLE_CLASS"
+	rusprofileCompanyInfoTitleDirectorTextEnv = "RUSPROFILE_COMPANY_INFO_TITLE_DIRECTOR_TEXT"
+	rusprofileCompanyInfoTextClassEnv         = "RUSPROFILE_COMPANY_INFO_TEXT_CLASS"
 )
 
 type Rusprofile struct {
@@ -29,11 +29,11 @@ type Rusprofile struct {
 	SearchCompanyItemDivClass      string `json:"search_company_item_div_class"`
 	SearchCompanyItemTitleDivClass string `json:"search_company_item_title_div_class"`
 
-	CompanyNameDivClass                  string `json:"company_name_div_class"`
-	CompanyKPPSpanID                     string `json:"company_kpp_span_id"`
-	CompanyInfoTitleClass                string `json:"company_info_title_class"`
-	CompanyInfoTitleDirectorText         string `json:"company_info_title_director_text"`
-	CompanyInfoTextClass                 string `json:"company_info_text_class"`
+	CompanyNameDivClass          string `json:"company_name_div_class"`
+	CompanyKPPSpanID             string `json:"company_kpp_span_id"`
+	CompanyInfoTitleClass        string `json:"company_info_title_class"`
+	CompanyInfoTitleDirectorText string `json:"company_info_title_director_text"`
+	CompanyInfoTextClass         string `json:"company_info_text_class"`
 }
 
 func (r *Rusprofile) Init() (err error) {

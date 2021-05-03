@@ -11,7 +11,8 @@ type Service interface {
 }
 
 var (
-	ErrNotFound           = errors.New("cannot find a company with this INN")
-	ErrInternalRusprofile = errors.New("internal rusprofile.ru error")
-	ErrTooManyRequests    = errors.New("too many requests to rusprofile.ru")
+	ErrNotFound                = errors.New("cannot find a company with this INN")
+	ErrInternalRusprofile      = errors.New("internal rusprofile.ru error")
+	ErrTooManyRequests         = errors.New("too many requests to rusprofile.ru")
+	ErrRuspofileResponseStatus = errors.New("rusprofile.ru response status code is not OK")
 )

@@ -41,7 +41,7 @@ func (b *base) GetCompanyByINN(ctx context.Context, inn string) (*models.Company
 	}
 
 	// check if search returns ambiguous results (zero or more than one)
-	if value, ok := html_utils.GetAttributeValueByKey(mainDiv, html_utils.ClassAttrKey); ok &&
+	if value, err := html_utils.GetAttributeValueByKey(mainDiv, html_utils.ClassAttrKey); err == nil &&
 		value == b.config.SearchAmbiguousResultDivClass {
 		mainDiv, err = b.processAmbiguousResult(mainDiv)
 		if err != nil {
@@ -54,19 +54,21 @@ func (b *base) GetCompanyByINN(ctx context.Context, inn string) (*models.Company
 	g, _ := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		if result, ok := b.findName(mainDiv); ok {
+		if result, err := b.findName(mainDiv); err != nil {
+			return err
+		} else {
 			name = result
 			return nil
 		}
-		return ErrNotFound
 	})
 
 	g.Go(func() error {
-		if result, ok := b.findKPP(mainDiv); ok {
+		if result, err := b.findKPP(mainDiv); err != nil {
+			return err
+		} else {
 			kpp = result
 			return nil
 		}
-		return ErrNotFound
 	})
 
 	// Info about director is compulsory, so it can be empty
@@ -90,58 +92,62 @@ func (b *base) GetCompanyByINN(ctx context.Context, inn string) (*models.Company
 	return company, nil
 }
 
-func (b *base) findName(mainDiv *html.Node) (string, bool) {
-	if nameDiv, ok := html_utils.FindDivByAttribute(mainDiv, html_utils.ClassAttrKey, b.config.CompanyNameDivClass); ok {
-		return html_utils.GetText(nameDiv), true
+func (b *base) findName(mainDiv *html.Node) (string, error) {
+	if nameDiv, err := html_utils.FindDivByAttribute(mainDiv, html_utils.ClassAttrKey, b.config.CompanyNameDivClass); err != nil {
+		return "", err
+	} else {
+		return html_utils.GetText(nameDiv), nil
 	}
-	return "", false
 }
 
-func (b *base) findKPP(mainDiv *html.Node) (string, bool) {
-	if kppSpan, ok := html_utils.FindSpanByAttribute(mainDiv, html_utils.IDAttrKey, b.config.CompanyKPPSpanID); ok {
-		return html_utils.GetText(kppSpan), true
+func (b *base) findKPP(mainDiv *html.Node) (string, error) {
+	if kppSpan, err := html_utils.FindSpanByAttribute(mainDiv, html_utils.IDAttrKey, b.config.CompanyKPPSpanID); err != nil {
+		return "", err
+	} else {
+		return html_utils.GetText(kppSpan), nil
 	}
-	return "", false
 }
 
-func (b *base) findDirector(mainDiv *html.Node) (string, bool) {
-	if director, ok := html_utils.FindSpanByClassAndText(
+func (b *base) findDirector(mainDiv *html.Node) (string, error) {
+	if director, err := html_utils.FindSpanByClassAndText(
 		mainDiv,
 		b.config.CompanyInfoTitleClass,
-		b.config.CompanyInfoTitleDirectorText); ok {
-		if text, ok := html_utils.FindAmongNextSiblingsByAttribute(
-			director,
-			html_utils.ClassAttrKey,
-			b.config.CompanyInfoTextClass); ok {
+		b.config.CompanyInfoTitleDirectorText); err != nil {
+		return "", err
+	} else if text, err := html_utils.FindAmongNextSiblingsByAttribute(
+		director,
+		html_utils.ClassAttrKey,
+		b.config.CompanyInfoTextClass); err != nil {
+		return "", err
+	} else {
+		text = text.FirstChild
+		if text.DataAtom == atom.A {
 			text = text.FirstChild
-			if text.DataAtom == atom.A {
-				text = text.FirstChild
-			}
-			return html_utils.GetText(text), true
 		}
+		return html_utils.GetText(text), nil
 	}
-	return "", false
 }
 
 func (b *base) processAmbiguousResult(mainDiv *html.Node) (*html.Node, error) {
-	if _, ok := html_utils.FindDivByAttribute(mainDiv, html_utils.ClassAttrKey, b.config.SearchEmptyResultDivClass); ok {
+	if _, err := html_utils.FindDivByAttribute(mainDiv, html_utils.ClassAttrKey, b.config.SearchEmptyResultDivClass); err != nil {
 		return nil, ErrNotFound
 	}
-	if companyTitle, ok := html_utils.FindDivByAttribute(
+	if companyTitle, err := html_utils.FindDivByAttribute(
 		mainDiv,
 		html_utils.ClassAttrKey,
-		b.config.SearchCompanyItemTitleDivClass); ok {
-		if a, ok := html_utils.FindTagAmongChildren(companyTitle, atom.A); ok {
-			if href, ok := html_utils.GetAttributeValueByKey(a, html_utils.HrefAttrKey); ok {
-				mainDiv, err := b.getMainDivByURL(b.config.BaseURL + href)
-				if err != nil {
-					return nil, err
-				}
-				return mainDiv, nil
-			}
+		b.config.SearchCompanyItemTitleDivClass); err != nil {
+		return nil, err
+	} else if a, err := html_utils.FindTagAmongChildren(companyTitle, atom.A); err != nil {
+		return nil, err
+	} else if href, err := html_utils.GetAttributeValueByKey(a, html_utils.HrefAttrKey); err != nil {
+		return nil, err
+	} else {
+		mainDiv, err := b.getMainDivByURL(b.config.BaseURL + href)
+		if err != nil {
+			return nil, err
 		}
+		return mainDiv, nil
 	}
-	return nil, ErrNotFound
 }
 
 func (b *base) getMainDivByURL(url string) (*html.Node, error) {
@@ -156,7 +162,7 @@ func (b *base) getMainDivByURL(url string) (*html.Node, error) {
 		return nil, ErrTooManyRequests
 	case http.StatusOK:
 	default:
-		return nil, ErrNotFound
+		return nil, ErrRuspofileResponseStatus
 	}
 
 	doc, err := html.Parse(resp.Body)
@@ -164,10 +170,9 @@ func (b *base) getMainDivByURL(url string) (*html.Node, error) {
 		return nil, err
 	}
 
-	mainDiv, ok := html_utils.FindDivByAttribute(doc, html_utils.IDAttrKey, b.config.MainDivID)
-	if !ok {
-		return nil, ErrNotFound
+	if mainDiv, err := html_utils.FindDivByAttribute(doc, html_utils.IDAttrKey, b.config.MainDivID); err != nil {
+		return nil, err
+	} else {
+		return mainDiv, nil
 	}
-
-	return mainDiv, nil
 }

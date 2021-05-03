@@ -1,6 +1,7 @@
 package html_utils
 
 import (
+	"fmt"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 	"strings"
@@ -23,79 +24,87 @@ func GetText(node *html.Node) string {
 	return strings.Join(ts, " ")
 }
 
-// Returns html.Node with corresponding tag and attribute key and value, and bool exists it or not.
+// Returns html.Node with corresponding tag and attribute key and value.
 // If there are several possible result nodes, returns the first one
-func findTagByAttribute(node *html.Node, tagAtom atom.Atom, attrKey, attrValue string) (*html.Node, bool) {
+func findTagByAttribute(node *html.Node, tagAtom atom.Atom, attrKey, attrValue string) (*html.Node, error) {
 	if node.DataAtom == tagAtom {
-		if value, ok := GetAttributeValueByKey(node, attrKey); ok && value == attrValue {
-			return node, true
+		if value, err := GetAttributeValueByKey(node, attrKey); err == nil && value == attrValue {
+			return node, nil
 		}
 	}
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		if result, ok := findTagByAttribute(c, tagAtom, attrKey, attrValue); ok {
-			return result, true
+		if result, err := findTagByAttribute(c, tagAtom, attrKey, attrValue); err == nil {
+			return result, nil
 		}
 	}
-	return nil, false
+	return nil, fmt.Errorf("cannot find node with tag <%s> with attribute key \"%s\" and value \"%s\"",
+		tagAtom.String(),
+		attrKey,
+		attrValue)
 }
 
-// Returns html.Node with corresponding text and attribute key and value, and bool if it exists of not
-func findByAttributeAndText(node *html.Node, attrKey, attrValue, text string) (*html.Node, bool) {
-	if value, ok := GetAttributeValueByKey(node, attrKey); ok && value == attrValue && GetText(node) == text {
-		return node, true
+// Returns html.Node with corresponding text and attribute key and value
+func findByAttributeAndText(node *html.Node, attrKey, attrValue, text string) (*html.Node, error) {
+	if value, err := GetAttributeValueByKey(node, attrKey); err == nil && value == attrValue && GetText(node) == text {
+		return node, nil
 	}
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		if result, ok := findByAttributeAndText(c, attrKey, attrValue, text); ok {
-			return result, true
+		if result, err := findByAttributeAndText(c, attrKey, attrValue, text); err == nil {
+			return result, nil
 		}
 	}
-	return nil, false
+	return nil, fmt.Errorf("cannot find node with with text \"%s\" attribute key \"%s\" and value \"%s\"",
+		text,
+		attrKey,
+		attrValue)
 }
 
-// Returns html.Node with corresponding tag among children of node, and bool if it exists or not.
+// Returns html.Node with corresponding tag among children of node.
 // If there are several possible nodes, returns the first one
-func FindTagAmongChildren(node *html.Node, tag atom.Atom) (*html.Node, bool) {
+func FindTagAmongChildren(node *html.Node, tag atom.Atom) (*html.Node, error) {
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type == html.ElementNode && c.DataAtom == tag {
-			return c, true
+			return c, nil
 		}
 	}
-	return nil, false
+	return nil, fmt.Errorf("cannot find node with tag <%s> among children", tag.String())
 }
 
-// Returns html.Node among next siblings with corresponding attribute key and value, and bool if it exists or not
-func FindAmongNextSiblingsByAttribute(node *html.Node, attrKey, attrValue string) (*html.Node, bool) {
+// Returns html.Node among next siblings with corresponding attribute key and value
+func FindAmongNextSiblingsByAttribute(node *html.Node, attrKey, attrValue string) (*html.Node, error) {
 	for s := node.NextSibling; s != nil; s = s.NextSibling {
-		if value, ok := GetAttributeValueByKey(s, attrKey); ok && value == attrValue {
-			return s, true
+		if value, err := GetAttributeValueByKey(s, attrKey); err == nil && value == attrValue {
+			return s, nil
 		}
 	}
-	return nil, false
+	return nil, fmt.Errorf("cannot find node with attribute key \"%s\" and value \"%s\" among next siblings",
+		attrKey,
+		attrValue)
 }
 
-// Returns html.Node with tag <div> and corresponding attribute key and value, and bool exists it or not
+// Returns html.Node with tag <div> and corresponding attribute key and value.
 // If there are several possible result nodes, returns the first one
-func FindDivByAttribute(node *html.Node, attrKey, attrValue string) (*html.Node, bool) {
+func FindDivByAttribute(node *html.Node, attrKey, attrValue string) (*html.Node, error) {
 	return findTagByAttribute(node, atom.Div, attrKey, attrValue)
 }
 
-// Returns html.Node with tag <span> and corresponding attribute key and value, and bool exists it or not.
+// Returns html.Node with tag <span> and corresponding attribute key and value.
 // If there are several possible result nodes, returns the first one
-func FindSpanByAttribute(node *html.Node, attrKey, attrValue string) (*html.Node, bool) {
+func FindSpanByAttribute(node *html.Node, attrKey, attrValue string) (*html.Node, error) {
 	return findTagByAttribute(node, atom.Span, attrKey, attrValue)
 }
 
-// Returns html.Node with corresponding text and class attribute value, and bool if it exists of not
-func FindSpanByClassAndText(node *html.Node, classValue, text string) (*html.Node, bool) {
+// Returns html.Node with corresponding text and class attribute value.
+func FindSpanByClassAndText(node *html.Node, classValue, text string) (*html.Node, error) {
 	return findByAttributeAndText(node, ClassAttrKey, classValue, text)
 }
 
-// Returns attribute value with corresponding key, and bool exists it or not
-func GetAttributeValueByKey(node *html.Node, attrKey string) (string, bool) {
+// Returns attribute value with corresponding key
+func GetAttributeValueByKey(node *html.Node, attrKey string) (string, error) {
 	for i := range node.Attr {
 		if node.Attr[i].Key == attrKey {
-			return node.Attr[i].Val, true
+			return node.Attr[i].Val, nil
 		}
 	}
-	return "", false
+	return "", fmt.Errorf("cannot find attribute with key \"%s\"", attrKey)
 }
