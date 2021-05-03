@@ -2,15 +2,14 @@ package rusprofile
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"github.com/timfame/rusprofile-service/internal/cache"
 	"github.com/timfame/rusprofile-service/internal/config"
 	"github.com/timfame/rusprofile-service/internal/models"
 	"github.com/timfame/rusprofile-service/pkg/html_utils"
 	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 	"golang.org/x/sync/errgroup"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -38,7 +37,7 @@ func (b *base) GetCompanyByINN(ctx context.Context, inn string) (*models.Company
 
 	mainDiv, err := b.getMainDivByURL(b.config.SearchURL + inn)
 	if err != nil {
-		return nil, errors.Wrap(err, "Get company by INN failed")
+		return nil, err
 	}
 
 	// check if search returns ambiguous results (zero or more than one)
@@ -46,7 +45,7 @@ func (b *base) GetCompanyByINN(ctx context.Context, inn string) (*models.Company
 		value == b.config.SearchAmbiguousResultDivClass {
 		mainDiv, err = b.processAmbiguousResult(mainDiv)
 		if err != nil {
-			return nil, errors.Wrap(err, "Get company by INN failed")
+			return nil, err
 		}
 	}
 
@@ -77,7 +76,7 @@ func (b *base) GetCompanyByINN(ctx context.Context, inn string) (*models.Company
 	})
 
 	if err := g.Wait(); err != nil {
-		return nil, errors.Wrap(err, "Get company by INN failed")
+		return nil, err
 	}
 
 	company = &models.Company{
@@ -93,29 +92,32 @@ func (b *base) GetCompanyByINN(ctx context.Context, inn string) (*models.Company
 
 func (b *base) findName(mainDiv *html.Node) (string, bool) {
 	if nameDiv, ok := html_utils.FindDivByAttribute(mainDiv, html_utils.ClassAttrKey, b.config.CompanyNameDivClass); ok {
-		return strings.TrimSpace(nameDiv.Data), true
+		return html_utils.GetText(nameDiv), true
 	}
 	return "", false
 }
 
 func (b *base) findKPP(mainDiv *html.Node) (string, bool) {
 	if kppSpan, ok := html_utils.FindSpanByAttribute(mainDiv, html_utils.IDAttrKey, b.config.CompanyKPPSpanID); ok {
-		return strings.TrimSpace(kppSpan.Data), true
+		return html_utils.GetText(kppSpan), true
 	}
 	return "", false
 }
 
 func (b *base) findDirector(mainDiv *html.Node) (string, bool) {
-	if director, ok := html_utils.FindNthByClass(
+	if director, ok := html_utils.FindSpanByClassAndText(
 		mainDiv,
-		b.config.CompanyInfoTitleWithDirectorPosition,
-		b.config.CompanyInfoTitleClass); ok {
-		if text, ok := html_utils.FindSpanByAttribute(director, html_utils.ClassAttrKey, b.config.CompanyInfoTextClass); ok {
+		b.config.CompanyInfoTitleClass,
+		b.config.CompanyInfoTitleDirectorText); ok {
+		if text, ok := html_utils.FindAmongNextSiblingsByAttribute(
+			director,
+			html_utils.ClassAttrKey,
+			b.config.CompanyInfoTextClass); ok {
 			text = text.FirstChild
-			if html_utils.IsA(text) {
+			if text.DataAtom == atom.A {
 				text = text.FirstChild
 			}
-			return strings.TrimSpace(text.Data), true
+			return html_utils.GetText(text), true
 		}
 	}
 	return "", false
@@ -128,13 +130,15 @@ func (b *base) processAmbiguousResult(mainDiv *html.Node) (*html.Node, error) {
 	if companyTitle, ok := html_utils.FindDivByAttribute(
 		mainDiv,
 		html_utils.ClassAttrKey,
-		b.config.SearchCompanyTitleDivClass); ok {
-		if href, ok := html_utils.GetHref(companyTitle.FirstChild); ok {
-			mainDiv, err := b.getMainDivByURL(b.config.BaseURL + href)
-			if err != nil {
-				return nil, err
+		b.config.SearchCompanyItemTitleDivClass); ok {
+		if a, ok := html_utils.FindTagAmongChildren(companyTitle, atom.A); ok {
+			if href, ok := html_utils.GetAttributeValueByKey(a, html_utils.HrefAttrKey); ok {
+				mainDiv, err := b.getMainDivByURL(b.config.BaseURL + href)
+				if err != nil {
+					return nil, err
+				}
+				return mainDiv, nil
 			}
-			return mainDiv, nil
 		}
 	}
 	return nil, ErrNotFound
@@ -144,6 +148,15 @@ func (b *base) getMainDivByURL(url string) (*html.Node, error) {
 	resp, err := b.httpClient.Get(url)
 	if err != nil {
 		return nil, err
+	}
+	switch resp.StatusCode {
+	case http.StatusInternalServerError:
+		return nil, ErrInternalRusprofile
+	case http.StatusTooManyRequests:
+		return nil, ErrTooManyRequests
+	case http.StatusOK:
+	default:
+		return nil, ErrNotFound
 	}
 
 	doc, err := html.Parse(resp.Body)

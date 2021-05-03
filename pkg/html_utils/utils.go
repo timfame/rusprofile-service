@@ -3,6 +3,7 @@ package html_utils
 import (
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
+	"strings"
 )
 
 const (
@@ -10,6 +11,17 @@ const (
 	ClassAttrKey = "class"
 	HrefAttrKey  = "href"
 )
+
+// Returns all text data from node
+func GetText(node *html.Node) string {
+	var ts []string
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.TextNode {
+			ts = append(ts, strings.TrimSpace(c.Data))
+		}
+	}
+	return strings.Join(ts, " ")
+}
 
 // Returns html.Node with corresponding tag and attribute key and value, and bool exists it or not.
 // If there are several possible result nodes, returns the first one
@@ -27,24 +39,38 @@ func findTagByAttribute(node *html.Node, tagAtom atom.Atom, attrKey, attrValue s
 	return nil, false
 }
 
-// Returns html.Node which is nth in crawl order of tree
-// with corresponding attribute key and value, and int how many corresponding nodes was found
-func findNthByAttribute(node *html.Node, nth int, attrKey, attrValue string) (*html.Node, int) {
-	found := 0
-	if value, ok := GetAttributeValueByKey(node, attrKey); ok && value == attrValue {
-		if nth == 1 {
-			return node, 1
-		}
-		found += 1
+// Returns html.Node with corresponding text and attribute key and value, and bool if it exists of not
+func findByAttributeAndText(node *html.Node, attrKey, attrValue, text string) (*html.Node, bool) {
+	if value, ok := GetAttributeValueByKey(node, attrKey); ok && value == attrValue && GetText(node) == text {
+		return node, true
 	}
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		result, cnt := findNthByAttribute(c, nth-found, attrKey, attrValue)
-		found += cnt
-		if found >= nth {
-			return result, found
+		if result, ok := findByAttributeAndText(c, attrKey, attrValue, text); ok {
+			return result, true
 		}
 	}
-	return nil, found
+	return nil, false
+}
+
+// Returns html.Node with corresponding tag among children of node, and bool if it exists or not.
+// If there are several possible nodes, returns the first one
+func FindTagAmongChildren(node *html.Node, tag atom.Atom) (*html.Node, bool) {
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode && c.DataAtom == tag {
+			return c, true
+		}
+	}
+	return nil, false
+}
+
+// Returns html.Node among next siblings with corresponding attribute key and value, and bool if it exists or not
+func FindAmongNextSiblingsByAttribute(node *html.Node, attrKey, attrValue string) (*html.Node, bool) {
+	for s := node.NextSibling; s != nil; s = s.NextSibling {
+		if value, ok := GetAttributeValueByKey(s, attrKey); ok && value == attrValue {
+			return s, true
+		}
+	}
+	return nil, false
 }
 
 // Returns html.Node with tag <div> and corresponding attribute key and value, and bool exists it or not
@@ -59,13 +85,9 @@ func FindSpanByAttribute(node *html.Node, attrKey, attrValue string) (*html.Node
 	return findTagByAttribute(node, atom.Span, attrKey, attrValue)
 }
 
-// Returns html.Node which is nth in crawl order of tree
-// and class key with corresponding value, and bool if it exists or not
-func FindNthByClass(node *html.Node, nth int, classValue string) (*html.Node, bool) {
-	if result, found := findNthByAttribute(node, nth, ClassAttrKey, classValue); found >= nth {
-		return result, true
-	}
-	return nil, false
+// Returns html.Node with corresponding text and class attribute value, and bool if it exists of not
+func FindSpanByClassAndText(node *html.Node, classValue, text string) (*html.Node, bool) {
+	return findByAttributeAndText(node, ClassAttrKey, classValue, text)
 }
 
 // Returns attribute value with corresponding key, and bool exists it or not
@@ -76,17 +98,4 @@ func GetAttributeValueByKey(node *html.Node, attrKey string) (string, bool) {
 		}
 	}
 	return "", false
-}
-
-func IsA(node *html.Node) bool {
-	return node.DataAtom == atom.A
-}
-
-// Returns href value from node, and bool if it exists or not.
-// Also it checks that node is with tag <a>
-func GetHref(node *html.Node) (string, bool) {
-	if !IsA(node) {
-		return "", false
-	}
-	return GetAttributeValueByKey(node, HrefAttrKey)
 }

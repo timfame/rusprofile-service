@@ -29,7 +29,7 @@ func main() {
 
 	s := rusprofile.NewLogger(rusprofile.NewBase(cfg.Rusprofile, c), l)
 
-	_, err = s.GetCompanyByINN(context.Background(), "7707083893")
+	_, err = s.GetCompanyByINN(context.Background(), "7843007274")
 	if err != nil {
 		l.Fatal("error", zap.Error(err))
 	}

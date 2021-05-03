@@ -8,4 +8,5 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20210502030024-e5908800b52b
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 )

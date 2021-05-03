@@ -6,16 +6,16 @@ const (
 	rusprofileBaseUrlEnv   = "RUSPROFILE_BASE_URL"
 	rusprofileSearchUrlEnv = "RUSPROFILE_SEARCH_URL"
 
-	rusprofileMainDivIDEnv                     = "RUSPROFILE_MAIN_DIV_ID"
-	rusprofileSearchAmbiguousResultDivClassEnv = "RUSPROFILE_SEARCH_AMBIGUOUS_RESULT_DIV_CLASS"
-	rusprofileSearchEmptyResultDivClassEnv     = "RUSPROFILE_SEARCH_EMPTY_RESULT_DIV_CLASS"
-	rusprofileSearchCompanyItemDivClassEnv     = "RUSPROFILE_SEARCH_COMPANY_ITEM_DIV_CLASS"
-	rusprofileSearchCompanyTitleDivClassEnv    = "RUSPROFILE_SEARCH_COMPANY_TITLE_DIV_CLASS"
+	rusprofileMainDivIDEnv                      = "RUSPROFILE_MAIN_DIV_ID"
+	rusprofileSearchAmbiguousResultDivClassEnv  = "RUSPROFILE_SEARCH_AMBIGUOUS_RESULT_DIV_CLASS"
+	rusprofileSearchEmptyResultDivClassEnv      = "RUSPROFILE_SEARCH_EMPTY_RESULT_DIV_CLASS"
+	rusprofileSearchCompanyItemDivClassEnv      = "RUSPROFILE_SEARCH_COMPANY_ITEM_DIV_CLASS"
+	rusprofileSearchCompanyItemTitleDivClassEnv = "RUSPROFILE_SEARCH_COMPANY_ITEM_TITLE_DIV_CLASS"
 
 	rusprofileCompanyNameDivClassEnv                  = "RUSPROFILE_COMPANY_NAME_DIV_CLASS"
 	rusprofileCompanyKPPSpanIDEnv                     = "RUSPROFILE_COMPANY_KPP_SPAN_ID"
 	rusprofileCompanyInfoTitleClassEnv                = "RUSPROFILE_COMPANY_INFO_TITLE_CLASS"
-	rusprofileCompanyInfoTitleWithDirectorPositionEnv = "RUSPROFILE_COMPANY_INFO_TITLE_WITH_DIRECTOR_POSITION"
+	rusprofileCompanyInfoTitleDirectorTextEnv         = "RUSPROFILE_COMPANY_INFO_TITLE_DIRECTOR_TEXT"
 	rusprofileCompanyInfoTextClassEnv                 = "RUSPROFILE_COMPANY_INFO_TEXT_CLASS"
 )
 
@@ -23,16 +23,16 @@ type Rusprofile struct {
 	BaseURL   string `json:"base_url"`
 	SearchURL string `json:"search_url"`
 
-	MainDivID                     string `json:"main_div_id"`
-	SearchAmbiguousResultDivClass string `json:"search_ambiguous_result_div_class"`
-	SearchEmptyResultDivClass     string `json:"search_empty_result_div_class"`
-	SearchCompanyItemDivClass     string `json:"search_company_item_div_class"`
-	SearchCompanyTitleDivClass    string `json:"search_company_title_div_class"`
+	MainDivID                      string `json:"main_div_id"`
+	SearchAmbiguousResultDivClass  string `json:"search_ambiguous_result_div_class"`
+	SearchEmptyResultDivClass      string `json:"search_empty_result_div_class"`
+	SearchCompanyItemDivClass      string `json:"search_company_item_div_class"`
+	SearchCompanyItemTitleDivClass string `json:"search_company_item_title_div_class"`
 
 	CompanyNameDivClass                  string `json:"company_name_div_class"`
 	CompanyKPPSpanID                     string `json:"company_kpp_span_id"`
 	CompanyInfoTitleClass                string `json:"company_info_title_class"`
-	CompanyInfoTitleWithDirectorPosition int    `json:"company_info_title_with_director_position"`
+	CompanyInfoTitleDirectorText         string `json:"company_info_title_director_text"`
 	CompanyInfoTextClass                 string `json:"company_info_text_class"`
 }
 
@@ -61,7 +61,7 @@ func (r *Rusprofile) Init() (err error) {
 	if err != nil {
 		return
 	}
-	r.SearchCompanyTitleDivClass, err = env.GetString(rusprofileSearchCompanyTitleDivClassEnv)
+	r.SearchCompanyItemTitleDivClass, err = env.GetString(rusprofileSearchCompanyItemTitleDivClassEnv)
 	if err != nil {
 		return
 	}
@@ -77,11 +77,10 @@ func (r *Rusprofile) Init() (err error) {
 	if err != nil {
 		return
 	}
-	position, err := env.GetInt64(rusprofileCompanyInfoTitleWithDirectorPositionEnv)
+	r.CompanyInfoTitleDirectorText, err = env.GetString(rusprofileCompanyInfoTitleDirectorTextEnv)
 	if err != nil {
 		return err
 	}
-	r.CompanyInfoTitleWithDirectorPosition = int(position)
 	r.CompanyInfoTextClass, err = env.GetString(rusprofileCompanyInfoTextClassEnv)
 	return
 }
