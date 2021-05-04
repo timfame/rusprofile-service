@@ -129,7 +129,7 @@ func (b *base) findDirector(mainDiv *html.Node) (string, error) {
 }
 
 func (b *base) processAmbiguousResult(mainDiv *html.Node) (*html.Node, error) {
-	if _, err := html_utils.FindDivByAttribute(mainDiv, html_utils.ClassAttrKey, b.config.SearchEmptyResultDivClass); err != nil {
+	if _, err := html_utils.FindDivByAttribute(mainDiv, html_utils.ClassAttrKey, b.config.SearchEmptyResultDivClass); err == nil {
 		return nil, ErrNotFound
 	}
 	if companyTitle, err := html_utils.FindDivByAttribute(

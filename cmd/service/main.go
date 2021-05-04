@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -62,7 +63,10 @@ func main() {
 	l.Info("Shutdown signal received")
 	cancel()
 
-	if err := grpcServ.GracefulStop(); err != nil {
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Second * 10)
+	defer shutdownCancel()
+
+	if err := grpcServ.GracefulStop(shutdownCtx); err != nil {
 		l.Info("Grpc gateway server graceful stop failed", zap.Error(err))
 	}
 

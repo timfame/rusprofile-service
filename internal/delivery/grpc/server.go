@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc"
 	"net"
 	"net/http"
-	"time"
 )
 
 const (
@@ -75,13 +74,11 @@ func (s *server) RunGateway(ctx context.Context) error {
 	return nil
 }
 
-func (s *server) GracefulStop() error {
+func (s *server) GracefulStop(ctx context.Context) error {
 	if s.grpcServer != nil {
 		s.grpcServer.GracefulStop()
 	}
 	if s.gwServer != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
 		if err := s.gwServer.Shutdown(ctx); err != nil {
 			return err
 		}
